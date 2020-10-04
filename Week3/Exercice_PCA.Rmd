@@ -1,0 +1,64 @@
+#Exercice: Principal Component Analysis
+
+##By Kalvin Dobler
+
+
+**Part 1: generation of a non-linear dataset
+
+
+Two groups (A and B) are depicted in the plot below. In particular, one group is "envelopped" by the other.
+
+
+```{r, echo = TRUE}
+circle <- data.frame(radius = rep(c(0, 1), 500) + rnorm(1000, sd = 0.05),
+                     phi = runif(1000, 0, 2 * pi), group = rep(c("A", "B"), 500))
+
+circle <- transform(circle, x = radius * cos(phi), y = radius * sin(phi), z = rnorm(length(radius)))
+
+circle$group = as.factor(circle$group)
+colors = c("blue", "red")[circle$group]
+data <- circle[,which(colnames(circle) == "x" |colnames(circle) == "y")]
+plot(data, col = colors, xlab = "", ylab = "")
+````
+
+**Part 2: compute PCA
+
+The result of the PCA returns the exact distribution of the original data. This is because the original data set cannot be linearly separated.
+
+
+```{r, echo=TRUE, message = FALSE, warning = FALSE}
+library(ggfortify)
+data_pca <- prcomp(data, center = TRUE, scale. = FALSE)
+autoplot(data_pca, data = circle, colour = colors)
+```
+
+**Part 3: try an alnertavie to solve the problem
+
+In order to make the dataset linearly separable, I chose to add a third dimension with the following function: f(x, y) = x^2 + y^2.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+library(scatterplot3d)
+
+data$z <- (circle$x)^2 + (circle$y)^2
+
+scatterplot3d(x = data$x, data$y, data$z, angle = 40,
+              xlab = "X", ylab = "Y", zlab = "Z",
+              color = colors, box = FALSE)
+```
+
+**Part 4: compute PCA
+
+The two groups were able to be linearly separated with the addition of a third dimension.
+In this case, the first two PCs explain for 70% of the total variance. In contrast, The PCA performed on the original data was not able to linearly separate it and thus, the first two PCs explained for 100% of the total variance. 
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+data_pca_3d = prcomp(data, center = TRUE, scale. = FALSE)
+autoplot(data_pca_3d, data = circle, colour = colors)
+```
+
+
+
+
+
+
+

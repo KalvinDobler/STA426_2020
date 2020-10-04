@@ -1,0 +1,126 @@
+#Exercice: Exploratory Data Analysis
+
+## By Kalvin Dobler
+
+**1. Import the data:
+
+```{r, echo = TRUE}
+setwd("C:/Users/Kalvin Edwin/Desktop/Sta Bioinfo/Week3")
+```
+
+```{r, echo = TRUE}
+x <- readRDS("counts.RDS")
+pheno <- readRDS("phenodata.RDS")
+x_df <- as.data.frame(x)
+```
+
+**2. Compute and visualize basic stats:
+
+- How many replicates are there for each combination of factor levels?
+There 3 technologies: bulk (3 DMSO + 3 TSA), IFC96 (20 DMSO + 20 TSA) and IFC800 (20 DMSO + 20 TSA).
+```{r, echo = TRUE}
+bulk <- pheno$Treatment[which(pheno$Technology == "bulk")]
+n_bulkDMSO <- length(grep("DMSO", bulk)) # 3 DMSO
+n_bulkTSA <- length(grep("TSA", bulk)) # 3 TSA
+ifc96 <- pheno$Treatment[which(pheno$Technology == "IFC96")]
+n_ifc96DMSO <- length(grep("DMSO", ifc96)) # 20 DMSO
+n_ifc96TSA <- length(grep("TSA", ifc96)) # 20 TSA
+ifc800 <- pheno$Treatment[which(pheno$Technology == "IFC800")]
+n_ifc800DMSO <- length(grep("DMSO", ifc800)) # 20 DMSO
+n_ifc800TSA <- length(grep("TSA", ifc96)) # 20 TSA
+```
+- How many genes have an expression value above 0 in each sample?
+There are 21 genes that have expression values higher than 0.
+```{r, echo = TRUE}
+no_zeros <- x_df[apply(x_df!=0, 1, all),]
+nrow(no_zeros)
+```
+
+**3. Normalize the data:
+
+```{r, echo = TRUE}
+x_df_scaled <- abs(scale(x_df, center = TRUE, scale = FALSE))
+```
+
+**4. Transform the data to log-scale:
+
+In order to avoid NaN values I made the scaled values in absolute.
+
+```{r, echo = TRUE}
+#x_df_scaled = x_df_scaled * 10^6
+x_df_logscaled <- log1p(x_df_scaled)
+```
+
+**5. Visualize the distribution of the expression values:
+
+Before visualizing the data, I converted it from wide format to long formt using the 'reshape2' package.
+
+However, the results are not the expected ones. I think that another scaling method should be used.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+library(reshape2)
+library(ggplot2)
+x_reshaped <- melt(x_df_logscaled, value.name = "value")
+par(mfrow = c(1, 2))
+
+ggplot(x_reshaped, aes(x = x_reshaped$Var2, y = x_reshaped$value, fill = x_reshaped$value)) +
+  geom_violin() +
+  ggtitle("Violin plot of the expression values") +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Technique / Treatment", y = "Log-scale value")
+
+ggplot(x_reshaped, aes(x = x_reshaped$Var2, y = x_reshaped$value)) +
+  geom_boxplot() +
+  ggtitle("Boxplots of the expression values")
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(x = "Technique / Treatment", y = "Log-scale value")
+```
+
+**6. Select the most 500 variable genes:
+
+For the sake of clarity, only 20 genes will be displayed. 
+In case one might want to change the number of genes, the modification can be easily done in the third line.
+
+```{r, echo = TRUE}
+x_df_logscaled <- as.data.frame(x_df_logscaled)
+x_df_logscaled$row_var <- apply(x_df_logscaled, 1, var)
+sort_test <- x_df_logscaled[order(-x_df_logscaled$row_var),][1:20,1:86]
+head(sort_test[1:3,ncol(sort_test)])
+```
+
+**7. Compute and visualize the sample-to-sample correlations
+
+The package 'corrplot' allows to better visualize the sample-tosample correlations.
+
+```{r, echo = TRUE}
+library(corrplot)
+fig.dim = c(6, 4)
+x_df_cor = cor(sort_test)
+corrplot(x_df_cor, is.corr = FALSE, tl.cex = 0.1)
+```
+
+**8. Compute and visualize a hierarchical clustering of the samples
+
+I used the euclidean method for constructing the dissimilarity matrix and the average method for constructing the tree.
+
+```{r, echo = TRUE}
+DE <- dist(sort_test, method = "euclidean")
+clust <- hclust(DE, method = "average")
+#par(cex=0.8)
+par(mar=c(0, 4, 4, 2))
+plot(clust, ylab = "Euclidean Distance", xlab = ""
+     , main = "Hierarchical Clustering",
+     cex = 0.6, hang = 0.1,
+     sub = "", ylim = c(0, 800))
+```
+
+**9. Generate a heatmap of expression values
+
+Finally, the heatmap allows to visualise the relatio between each sample.
+
+```{r, echo = TRUE}
+library(pheatmap)
+pheatmap(sort_test, main = "Heatmap of expression values",
+         fontsize_row = 0.2, fontsize_col = 0.2, scale = "row")
+```
+
