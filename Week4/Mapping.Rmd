@@ -1,0 +1,68 @@
+#Exercice: Mapping
+
+## By Kalvin Dobler
+
+**Part 1: theory**
+
+Question 1: how do these mappers score alignments?
+The score quantifies how similar the read sequence is to the reference sequence aligned to. Hence, the higher the score, the more similar the sequences are. In particular, a score is calculated by adding bonuses for each match and substracting penalties for each difference (mismatch, gap).
+
+Question 2: what reporting options are available?
+The reporting mode governs how many alignments the algorithm looks for, and how to report them. 
+For instance, Bowtie 2 has three distinct reporting modes, including Burrows-Wheeler Aligner (it searchs for valid alignments for each read). The two other reporting options are -k and -a.
+
+
+**Part 2: mapping**
+
+1. Import data from a website into the correct directory
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+url <- "http://fgcz-gstore.uzh.ch/public/Yeast_Reads/20170313.A-G1_R1-sub.fastq.gz"
+destination_file <- "C:/Users/Kalvin Edwin/Desktop/STA426/Week4/A-G1_R1.fastq.gz"
+download.file(url, destination_file)
+fastq.files <- list.files(path = "C:/Users/Kalvin Edwin/Desktop/STA426/Week4/",
+                          pattern = ".fastq.gz$", full.names = TRUE)
+```
+
+
+2. Import the respective libraries
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+library("BSgenome")
+library("BSgenome.Scerevisiae.UCSC.sacCer3")
+library("Rsubread")
+```
+
+
+3. Export method in the *BSgenome* package to write the genome as a fasta file on the local disk
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+genome <- BSgenome.Scerevisiae.UCSC.sacCer3
+genome_file <- file.path(tempdir("C:/Users/Kalvin Edwin/Desktop/STA426/Week4/"),
+                         "Scerevisiae.fasta")
+export(genome, genome_file)
+```
+
+
+4. Create a hash table index for reference genome
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+buildindex(basename="mapping",reference= genome_file, memory = 2000)
+```
+
+
+5. Run the alignment with 4 threads
+
+The percentage of mapped reads = 2408266 which is about 90% of total reads. Since it takes 4 minutes (240 seconds) for mapping 2408266 reads, then the mapping rate is equal to (2408266/240) = 10'034 reads per second.
+
+*Note that the running time was varrying between 3.9 and 4.2 minutes between the standard run and the 'knit', so I arbitrary choose 4 minutes for the calculations.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+align(index="mapping", readfile1 = "A-G1_r1.fastq.gz", nthreads = 4)
+```
+
+6. Run the same alignment but with trimming 5 bases of both ends
+
+The percentage of mapped reads = 2408266 which is about 92% of total reads. Since it takes 4 minutes (240 seconds) for mapping 2408266 reads, then the mapping rate is equal to (2453157/240) = 10'221 reads per second.
+
+```{r, echo = TRUE, message = FALSE, warning = FALSE}
+align(index="mapping", readfile1 = "A-G1_r1.fastq.gz", nthreads = 4, nTrim5 = 5, nTrim3 = 5)
+```
+
+
